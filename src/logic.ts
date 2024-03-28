@@ -36,21 +36,25 @@ export interface GameState {
   endGame: number;
   events: GameEvent[];
   gameStart: number;
+  gameOver: boolean;
+  gameOverReason: string;
+  reportWinnerAt: number;
+  restart: boolean;
 }
 
 function getRandomItem(): Item {
   return Item.GAP2;
 
   const value = Math.random();
-  if (value < 0.2) {
+  if (value < 0.15) {
     return Item.SMALL_CACTUS
-  } else if (value < 0.4) {
+  } else if (value < 0.3) {
     return Item.CACTUS
-  } else if (value < 0.6) {
+  } else if (value < 0.4) {
     return Item.ROCKS
-  } else if (value < 0.8) {
+  } else if (value < 0.6) {
     return Item.FLYING
-  } else if (value < 0.9) {
+  } else if (value < 0.8) {
     return Item.GAP
   } else {
     return Item.GAP2;
@@ -80,6 +84,19 @@ declare global {
   const Rune: RuneClient<GameState, GameActions>
 }
 
+function reportWinner(game: GameState) {
+  const players = Object.values(game.players);
+  const winner = players.reduce((a, b) => a.x > b.x ? a : b);
+  const result: Record<string, "WON" | "LOST"> = {};
+  for (const player of players) {
+    result[player.id] = winner === player ? "WON" : "LOST";
+  }
+
+  Rune.gameOver({
+    players: result
+  })
+}
+
 Rune.initLogic({
   minPlayers: 1,
   maxPlayers: 4,
@@ -90,11 +107,15 @@ Rune.initLogic({
       items: {},
       endGame: Rune.gameTime() + (1 * 60000),
       events: [],
-      gameStart: 0
+      gameStart: 0,
+      gameOver: false,
+      gameOverReason: "",
+      reportWinnerAt: 0,
+      restart: true
     };
 
     let x = 20;
-    for (let i=0;i<500;i++) {
+    for (let i = 0; i < 500; i++) {
       x += 10 + Math.floor(Math.random() * 10);
       state.items[x] = getRandomItem();
     }
@@ -108,7 +129,7 @@ Rune.initLogic({
         y: 0,
         vx: 0,
         vy: 0,
-        sprite: (state.nextSprite++)%4,
+        sprite: (state.nextSprite++) % 4,
         dead: false,
         lastBounce: 0,
         ready: false
@@ -120,23 +141,41 @@ Rune.initLogic({
   },
   updatesPerSecond: 30,
   update: (context) => {
+    context.game.events = [];
+    context.game.restart = false;
+
     if (!Object.values(context.game.players).every(p => p.ready)) {
-      context.game.endGame =  Rune.gameTime() + (1 * 60000);
+      context.game.endGame = Rune.gameTime() + (1 * 60000);
       return;
     }
     if (context.game.gameStart === 0) {
       context.game.gameStart = Rune.gameTime() + 3000;
     }
     if (Rune.gameTime() < context.game.gameStart) {
-      context.game.endGame =  Rune.gameTime() + (1 * 60000);
+      context.game.endGame = Rune.gameTime() + (1 * 60000);
+      return;
+    }
+    if (!context.game.gameOver) {
+      if (Object.values(context.game.players).every(p => p.dead)) {
+        context.game.gameOver = true;
+        context.game.gameOverReason = "All out!";
+        context.game.reportWinnerAt = Rune.gameTime() + 1000;
+      }
+      if (context.game.endGame < Rune.gameTime()) {
+        context.game.gameOver = true;
+        context.game.gameOverReason = "Time over!";
+        context.game.reportWinnerAt = Rune.gameTime() + 1000;
+      }
+    }
+    if (context.game.reportWinnerAt < Rune.gameTime() && context.game.gameOver) {
+      reportWinner(context.game);
       return;
     }
 
-    // do nothing
-    context.game.events = [];
-
     for (const p of Object.values(context.game.players)) {
-      p.x += p.vx / 2;
+      if (!context.game.gameOver) {
+        p.x += p.vx / 2;
+      }
       p.y += p.vy;
       if (p.vy !== 0) {
         p.vy += 1.9;
@@ -149,11 +188,11 @@ Rune.initLogic({
       if (!p.dead) {
         const xp = (Math.floor(p.x / 32));
         // on the ground over a gap - fall off screen
-        if ((context.game.items[xp] === Item.GAP || context.game.items[xp+1] === Item.GAP) && (p.y === 0)) {
+        if ((context.game.items[xp] === Item.GAP || context.game.items[xp + 1] === Item.GAP) && (p.y === 0)) {
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
-        } else if ((context.game.items[xp] === Item.GAP2 || context.game.items[xp+1] === Item.GAP2 || context.game.items[xp+2] === Item.GAP2) && (p.y === 0)) {
+        } else if ((context.game.items[xp] === Item.GAP2 || context.game.items[xp + 1] === Item.GAP2 || context.game.items[xp + 2] === Item.GAP2) && (p.y === 0)) {
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
@@ -164,7 +203,7 @@ Rune.initLogic({
           context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id });
           delete context.game.items[xp];
           p.lastBounce = Rune.gameTime();
-        } else if (context.game.items[xp] !== Item.GAP && context.game.items[xp] !== Item.GAP2 && context.game.items[xp] !== Item.FLYING  && context.game.items[xp] && p.y > -8) {
+        } else if (context.game.items[xp] !== Item.GAP && context.game.items[xp] !== Item.GAP2 && context.game.items[xp] !== Item.FLYING && context.game.items[xp] && p.y > -8) {
           p.vx = -20;
           p.vy = -10;
           p.x -= p.vx;
@@ -187,9 +226,9 @@ Rune.initLogic({
       }
     },
     jump: (_, context) => {
-    if (Rune.gameTime() < context.game.gameStart) {
-      return;
-    }
+      if (Rune.gameTime() < context.game.gameStart) {
+        return;
+      }
 
       const player = context.game.players[context.playerId];
       if (player && !player.dead) {

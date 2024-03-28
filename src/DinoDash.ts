@@ -72,8 +72,8 @@ export class DinoDash implements graphics.Game {
         this.bigFont = graphics.generateFont(35, "white");
 
         this.flying = [];
-        for (let i=1;i<5;i++) {
-            this.flying.push(graphics.loadImage(ASSETS["flying/"+i+".png"]))
+        for (let i = 1; i < 5; i++) {
+            this.flying.push(graphics.loadImage(ASSETS["flying/" + i + ".png"]))
         }
         this.players[0] = {
             run: graphics.loadTileSet(ASSETS["player1/run.png"], 32, 16),
@@ -104,6 +104,7 @@ export class DinoDash implements graphics.Game {
 
     mouseDown(x: number, y: number, index: number): void {
         if (this.spectator) {
+            alert("Spectator");
             return;
         }
         if (this.waitingForReady) {
@@ -186,11 +187,16 @@ export class DinoDash implements graphics.Game {
 
     gameUpdate(update: GameUpdate): void {
         this.game = update.game;
+        if (this.game.restart) {
+            this.waitingForReady = true;
+        }
+
         if (this.game.gameStart !== 0) {
             this.waitingForReady = false;
         }
         if (update.yourPlayerId) {
             this.player = update.game.players[update.yourPlayerId];
+            this.spectator = false;
         } else {
             this.player = Object.values(update.game.players)[0];
             this.spectator = true;
@@ -338,7 +344,7 @@ export class DinoDash implements graphics.Game {
                     graphics.drawTile(this.tileset, i * 32, y - 32 + piece.y, 23, 32, 32);
                 }
                 if (piece.item === Item.FLYING) {
-                    graphics.drawImage(this.flying[Math.floor(this.frameCount / 10) % 4], i * 32, y - 96  + piece.y, 64, 64);
+                    graphics.drawImage(this.flying[Math.floor(this.frameCount / 10) % 4], i * 32, y - 96 + piece.y, 64, 64);
                 }
             }
         }
@@ -351,17 +357,19 @@ export class DinoDash implements graphics.Game {
         players.splice(players.indexOf(this.player), 1);
         players.push(this.player);
 
-        for (const dino of players) {
-            if (dino.y > 120) {
-                continue;
+        if (!this.waitingForReady) {
+            for (const dino of players) {
+                if (dino.y > 120) {
+                    continue;
+                }
+                const playerSprite = this.players[dino.sprite];
+                const anim = dino.vx < 1 ? playerSprite.idle : playerSprite.run;
+                const frames = dino.vx < 1 ? playerSprite.idleFrames : playerSprite.runFrames;
+                graphics.push();
+                graphics.translate(Math.floor(dino.x), y + Math.floor(dino.y) - (playerSprite.run.tileHeight * 2));
+                graphics.drawTile(anim, -32, 0, Math.floor(this.frameCount / (12 - frames)) % frames, anim.tileWidth * 2, anim.tileHeight * 2, dino === this.player ? "white" : "#aaa");
+                graphics.pop();
             }
-            const playerSprite = this.players[dino.sprite];
-            const anim = dino.vx < 1 ? playerSprite.idle : playerSprite.run;
-            const frames = dino.vx < 1 ? playerSprite.idleFrames : playerSprite.runFrames;
-            graphics.push();
-            graphics.translate(Math.floor(dino.x), y + Math.floor(dino.y) - (playerSprite.run.tileHeight * 2));
-            graphics.drawTile(anim, -32, 0, Math.floor(this.frameCount / (12 - frames)) % frames, anim.tileWidth * 2, anim.tileHeight * 2, dino === this.player ? "white" : "#aaa");
-            graphics.pop();
         }
         graphics.pop();
 
@@ -384,45 +392,50 @@ export class DinoDash implements graphics.Game {
         graphics.drawImage(this.jump, Math.floor(graphics.width() / 2) - (buttonScale * 0.75), graphics.height() - (buttonScale * 3.75), buttonScale * 1.5, buttonScale * 1.5);
 
 
-        graphics.fillRect(0, 0, graphics.width(), 28, "rgba(0,0,0,0.5)");
-        const width = Math.floor(graphics.width() / 4);
-        graphics.fillRect(Math.floor((graphics.width() / 2) - (width / 2)) - 1, 4, width + 2, 20, "black");
-        if (this.speed >= 0) {
-            graphics.fillRect(Math.floor((graphics.width() / 2) - (width / 2)), 5, Math.min(width, Math.floor((this.speed / 30) * width)), 18, "#748db1");
+        if (!this.game.gameOver) {
+            graphics.fillRect(0, 0, graphics.width(), 28, "rgba(0,0,0,0.5)");
+            const width = Math.floor(graphics.width() / 4);
+            graphics.fillRect(Math.floor((graphics.width() / 2) - (width / 2)) - 1, 4, width + 2, 20, "black");
+            if (this.speed >= 0) {
+                graphics.fillRect(Math.floor((graphics.width() / 2) - (width / 2)), 5, Math.min(width, Math.floor((this.speed / 30) * width)), 18, "#748db1");
+            }
+
+            const distance = Math.floor((this.player.x - 60) / 50) + "m";
+            graphics.drawText(6, 21, distance, this.font, "black");
+            graphics.drawText(5, 20, distance, this.font);
+
+            const secondsRemaining = Math.floor((this.game.endGame - Rune.gameTime()) / 1000);
+            const secs = Math.max(0, secondsRemaining % 60);
+            const mins = Math.max(Math.floor(secondsRemaining / 60));
+            const secsStr = secs < 10 ? "0" + secs : "" + secs;
+            const minsStr = mins < 10 ? "0" + mins : "" + mins;
+            const timeStr = minsStr + ":" + secsStr;
+
+            graphics.drawText(graphics.width() - graphics.textWidth(timeStr, this.font) - 10, 21, timeStr, this.font, "black");
+            graphics.drawText(graphics.width() - graphics.textWidth(timeStr, this.font) - 9, 20, timeStr, this.font, "white");
         }
 
-        const distance = Math.floor((this.player.x - 60) / 50) + "m";
-        graphics.drawText(6, 21, distance, this.font, "black");
-        graphics.drawText(5, 20, distance, this.font);
-
-        const secondsRemaining = Math.floor((this.game.endGame - Rune.gameTime()) / 1000);
-        const secs = Math.max(0, secondsRemaining % 60);
-        const mins = Math.max(Math.floor(secondsRemaining / 60));
-        const secsStr = secs < 10 ? "0" + secs : "" + secs;
-        const minsStr = mins < 10 ? "0" + mins : "" + mins;
-        const timeStr = minsStr + ":" + secsStr;
-
-        graphics.drawText(graphics.width() - graphics.textWidth(timeStr, this.font) - 10, 21, timeStr, this.font, "black");
-        graphics.drawText(graphics.width() - graphics.textWidth(timeStr, this.font) - 9, 20, timeStr, this.font, "white");
-
-
         if (this.waitingForReady) {
-            graphics.fillRect(0,0,graphics.width(), graphics.height(), "rgba(0,0,0,0.25)");
+            graphics.fillRect(0, 0, graphics.width(), graphics.height(), "rgba(0,0,0,0.25)");
             graphics.drawImage(this.logo, Math.floor((graphics.width() - this.logo.width) / 2), 50);
 
+            const playerSprite = this.players[this.player.sprite];
+            const anim = this.player.vx < 1 ? playerSprite.idle : playerSprite.run;
+            const frames = this.player.vx < 1 ? playerSprite.idleFrames : playerSprite.runFrames;
+            graphics.drawTile(anim, (graphics.width() / 2) - 48, (graphics.height() / 2) - 10 - anim.tileHeight * 3, Math.floor(this.frameCount / (12 - frames)) % frames, anim.tileWidth * 3, anim.tileHeight * 3);
 
             if (this.player.ready) {
                 const msg = "Waiting...";
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2)+2, Math.floor(graphics.height() / 2) + 40, msg, this.bigFont, "black");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2), Math.floor(graphics.height() / 2) + 38, msg, this.bigFont);
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2) + 2, Math.floor(graphics.height() / 2) + 40, msg, this.bigFont, "black");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), Math.floor(graphics.height() / 2) + 38, msg, this.bigFont);
 
-            }  else {
+            } else {
                 graphics.fillRect(Math.floor(graphics.width() / 2) - 100, Math.floor(graphics.height() / 2), 204, 54, "rgba(0,0,0,0.5)");
-                graphics.fillRect(Math.floor(graphics.width() / 2) - 102, Math.floor(graphics.height() / 2) -2, 204, 54, "black");
+                graphics.fillRect(Math.floor(graphics.width() / 2) - 102, Math.floor(graphics.height() / 2) - 2, 204, 54, "black");
                 graphics.fillRect(Math.floor(graphics.width() / 2) - 100, Math.floor(graphics.height() / 2), 200, 50, "#a6cc34");
 
                 const msg = "Ready?";
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2), Math.floor(graphics.height() / 2) + 38, msg, this.bigFont);
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), Math.floor(graphics.height() / 2) + 38, msg, this.bigFont);
             }
         }
 
@@ -431,19 +444,54 @@ export class DinoDash implements graphics.Game {
             if (untilStart > 2000) {
                 const msg = "Ready?";
                 graphics.fillRect(0, Math.floor(graphics.height() / 2) - 80, graphics.width(), 50, "rgba(0,0,0,0.5)");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2)+2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#ad443d");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2) + 2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#ad443d");
             } else if (untilStart > 1000) {
                 const msg = "Get Set!";
                 graphics.fillRect(0, Math.floor(graphics.height() / 2) - 80, graphics.width(), 50, "rgba(0,0,0,0.5)");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2)+2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#df6d38");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2) + 2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#df6d38");
             } else if (untilStart > 0) {
                 const msg = "Go!";
                 graphics.fillRect(0, Math.floor(graphics.height() / 2) - 80, graphics.width(), 50, "rgba(0,0,0,0.5)");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2)+2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
-                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) /2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#a6cc34");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2) + 2, Math.floor(graphics.height() / 2) - 40, msg, this.bigFont, "black");
+                graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), Math.floor(graphics.height() / 2) - 42, msg, this.bigFont, "#a6cc34");
             }
+        }
+
+        if (this.game.gameOver) {
+            const msg = "Winner!";
+
+            graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2) + 2, 42, msg, this.bigFont, "black");
+            graphics.drawText(Math.floor((graphics.width() - graphics.textWidth(msg, this.bigFont)) / 2), 40, msg, this.bigFont, "white");
+
+            const players = Object.values(this.game.players);
+            const winner = players.reduce((a, b) => a.x > b.x ? a : b);
+            graphics.fillRect(0, 55, graphics.width(), 25, "rgba(0,0,0,0.5)");
+            graphics.drawText(58, 73, Rune.getPlayerInfo(winner.id).displayName, this.font);
+            const distance = Math.floor((winner.x - 60) / 50) + "m";
+            graphics.drawText(graphics.width() - 10 - graphics.textWidth(distance, this.font), 75, distance, this.font);
+            const playerSprite = this.players[winner.sprite];
+            const anim = playerSprite.idle;
+            graphics.drawTile(anim, -10, 82 - anim.tileHeight * 2, 0, anim.tileWidth * 2, anim.tileHeight * 2);
+
+            graphics.push();
+            graphics.translate(0, 64);
+            for (const player of players) {
+                if (player === winner) {
+                    continue;
+                }
+
+                graphics.fillRect(0, 55, graphics.width(), 25, "rgba(0,0,0,0.5)");
+                graphics.drawText(58, 73, Rune.getPlayerInfo(player.id).displayName, this.font);
+                const distance = Math.floor((player.x - 60) / 50) + "m";
+                graphics.drawText(graphics.width() - 10 - graphics.textWidth(distance, this.font), 75, distance, this.font);
+                const playerSprite = this.players[player.sprite];
+                const anim = playerSprite.idle;
+                graphics.drawTile(anim, -10, 82 - anim.tileHeight * 2, 0, anim.tileWidth * 2, anim.tileHeight * 2);
+                graphics.translate(0, 32);
+            }
+            graphics.pop();
         }
     }
 }
