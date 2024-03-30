@@ -134,7 +134,7 @@ export class DinoDash implements graphics.Game {
         this.font = graphics.generateFont(16, "white");
     }
 
-    mouseDown(x: number, y: number, index: number): void {
+    mouseDown(x: number, y: number): void {
         if (this.spectator) {
             alert("Spectator");
             return;
@@ -175,11 +175,11 @@ export class DinoDash implements graphics.Game {
         }
     }
 
-    mouseDrag(x: number, y: number, index: number): void {
+    mouseDrag(): void {
         // do nothing
     }
 
-    mouseUp(x: number, y: number, index: number): void {
+    mouseUp(): void {
         // do nothing
     }
 
@@ -212,7 +212,7 @@ export class DinoDash implements graphics.Game {
         }
     }
 
-    keyUp(key: string): void {
+    keyUp(): void {
         // do nothing
     }
 
