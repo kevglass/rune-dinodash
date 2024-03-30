@@ -14,6 +14,11 @@ export type Player = {
   ready: boolean;
 }
 
+export enum GameEventType {
+  HIT,
+  DIED,
+}
+
 export enum Item {
   SMALL_CACTUS = 1,
   CACTUS = 2,
@@ -27,6 +32,7 @@ export interface GameEvent {
   xp: number;
   item: number;
   playerId: string;
+  type: GameEventType;
 }
 
 export interface GameState {
@@ -43,8 +49,6 @@ export interface GameState {
 }
 
 function getRandomItem(): Item {
-  return Item.GAP2;
-
   const value = Math.random();
   if (value < 0.15) {
     return Item.SMALL_CACTUS
@@ -149,7 +153,7 @@ Rune.initLogic({
       return;
     }
     if (context.game.gameStart === 0) {
-      context.game.gameStart = Rune.gameTime() + 3000;
+      context.game.gameStart = Rune.gameTime() + 4000;
     }
     if (Rune.gameTime() < context.game.gameStart) {
       context.game.endGame = Rune.gameTime() + (1 * 60000);
@@ -192,22 +196,24 @@ Rune.initLogic({
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED});
         } else if ((context.game.items[xp] === Item.GAP2 || context.game.items[xp + 1] === Item.GAP2 || context.game.items[xp + 2] === Item.GAP2) && (p.y === 0)) {
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED});
         } else if (context.game.items[xp] === Item.FLYING && p.y < -10) {
           p.vx = -20;
           p.vy = -10;
           p.x -= p.vx;
-          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id });
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.HIT});
           delete context.game.items[xp];
           p.lastBounce = Rune.gameTime();
         } else if (context.game.items[xp] !== Item.GAP && context.game.items[xp] !== Item.GAP2 && context.game.items[xp] !== Item.FLYING && context.game.items[xp] && p.y > -8) {
           p.vx = -20;
           p.vy = -10;
           p.x -= p.vx;
-          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id });
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.HIT });
           delete context.game.items[xp];
           p.lastBounce = Rune.gameTime();
         }

@@ -1,6 +1,6 @@
-import { graphics } from "toglib";
+import { graphics, sound } from "toglib";
 import { ASSETS } from "./lib/assets";
-import { GameState, GameUpdate, Item, Player, SLOW_DOWN } from "./logic";
+import { GameEventType, GameState, GameUpdate, Item, Player, SLOW_DOWN } from "./logic";
 
 export interface PlayerSprite {
     run: graphics.TileSet;
@@ -13,6 +13,12 @@ export interface Piece {
     item: Item;
     xp: number;
     vy: number;
+    y: number;
+}
+
+export interface Particle {
+    life: number;
+    x: number;
     y: number;
 }
 
@@ -51,10 +57,35 @@ export class DinoDash implements graphics.Game {
     brokenPieces: Piece[] = [];
     waitingForReady = true;
 
+    sfxEnd: sound.Sound;
+    sfxJump: sound.Sound;
+    sfxStartup: sound.Sound;
+    sfxReady: sound.Sound;
+    sfxStart: sound.Sound;
+    sfxBump: sound.Sound;
+    sfxFall: sound.Sound;
+    sfxWin: sound.Sound;
+
+    gameOver = false;
+    dust: graphics.TileSet;
+
+    particles: Particle[] = [];
+    updateCount = 0;
+    lastParticle = 0;
+
     constructor() {
         // we're going to use the WebGL renderer with 5 pixels of texture padding
         // to prevent artifacts 
         graphics.init(graphics.RendererType.WEBGL, true, undefined, 5);
+
+        this.sfxEnd = sound.loadSound(ASSETS["end.mp3"]);
+        this.sfxJump = sound.loadSound(ASSETS["jump.mp3"]);
+        this.sfxStartup = sound.loadSound(ASSETS["startup.mp3"]);
+        this.sfxReady = sound.loadSound(ASSETS["ready.mp3"]);
+        this.sfxStart = sound.loadSound(ASSETS["start.mp3"]);
+        this.sfxBump = sound.loadSound(ASSETS["bump.mp3"]);
+        this.sfxFall = sound.loadSound(ASSETS["fall.mp3"]);
+        this.sfxWin = sound.loadSound(ASSETS["win.mp3"]);
 
         this.whiteCircle = graphics.loadImage(ASSETS["whitecircle.png"]);
         this.foot = graphics.loadImage(ASSETS["foot.png"]);
@@ -71,6 +102,7 @@ export class DinoDash implements graphics.Game {
         this.font = graphics.generateFont(16, "white");
         this.bigFont = graphics.generateFont(35, "white");
 
+        this.dust = graphics.loadTileSet(ASSETS["dust.png"], 16, 16),
         this.flying = [];
         for (let i = 1; i < 5; i++) {
             this.flying.push(graphics.loadImage(ASSETS["flying/" + i + ".png"]))
@@ -110,6 +142,7 @@ export class DinoDash implements graphics.Game {
         if (this.waitingForReady) {
             if (Math.abs(y - graphics.height() / 2) < 50) {
                 Rune.actions.ready();
+                sound.playSound(this.sfxReady);
             }
             return;
         }
@@ -136,6 +169,7 @@ export class DinoDash implements graphics.Game {
                 } else {
                     // jump
                     Rune.actions.jump();
+                    sound.playSound(this.sfxJump);
                 }
             }
         }
@@ -174,6 +208,7 @@ export class DinoDash implements graphics.Game {
 
         if (key === ' ') {
             Rune.actions.jump();
+            sound.playSound(this.sfxJump);
         }
     }
 
@@ -186,13 +221,38 @@ export class DinoDash implements graphics.Game {
     }
 
     gameUpdate(update: GameUpdate): void {
-        this.game = update.game;
-        if (this.game.restart) {
-            this.waitingForReady = true;
+        if (update.event?.name !== "update") {
+            return;
         }
 
-        if (this.game.gameStart !== 0) {
+        for (const particle of [...this.particles]) {
+            particle.life++;
+            if (particle.life > 15) {
+                this.particles.splice(this.particles.indexOf(particle), 1);
+            } 
+        }
+
+        this.game = update.game;
+        if (!this.gameOver && this.game.gameOver) {
+            this.gameOver = true;
+            const players = Object.values(this.game.players);
+            const winner = players.reduce((a, b) => a.x > b.x ? a : b);
+            if (winner.id === update.yourPlayerId) {
+                sound.playSound(this.sfxWin, 0.5);
+            } else {
+                sound.playSound(this.sfxEnd, 0.5);
+            }
+        }
+        if (this.game.restart) {
+            this.waitingForReady = true;
+            this.speed = 0;
+            this.gameOver = false;
+            sound.playSound(this.sfxStartup);
+        }
+
+        if (this.game.gameStart !== 0 && this.waitingForReady) {
             this.waitingForReady = false;
+            sound.playSound(this.sfxStart);
         }
         if (update.yourPlayerId) {
             this.player = update.game.players[update.yourPlayerId];
@@ -205,8 +265,13 @@ export class DinoDash implements graphics.Game {
         for (const event of this.game.events) {
             this.brokenPieces.push({ ...event, vy: -20, y: 0 });
 
-            if (event.playerId === update.yourPlayerId) {
+            if (event.playerId === update.yourPlayerId && event.type === GameEventType.HIT) {
                 this.speed = -20;
+                sound.playSound(this.sfxBump);
+            }
+            if (event.playerId === update.yourPlayerId && event.type === GameEventType.DIED) {
+                sound.playSound(this.sfxFall);
+                this.speed = 0;
             }
         }
         if (this.player && !this.spectator) {
@@ -226,6 +291,15 @@ export class DinoDash implements graphics.Game {
             piece.y += piece.vy;
             if (piece.y > 128) {
                 this.brokenPieces.splice(this.brokenPieces.indexOf(piece), 1);
+            }
+        }
+        if (Date.now() - this.lastParticle > 500) {
+            this.lastParticle = Date.now();
+
+            for (const player of Object.values(this.game.players)) {
+                if (player.vx > 1 && player.y === 0) {
+                    this.particles.push({ life: 0, x: player.x - 25, y: player.y });
+                }
             }
         }
     }
@@ -358,6 +432,12 @@ export class DinoDash implements graphics.Game {
         players.push(this.player);
 
         if (!this.waitingForReady) {
+            for (const particle of this.particles) {
+                graphics.push();
+                graphics.translate(Math.floor(particle.x), y + Math.floor(particle.y));
+                graphics.drawTile(this.dust, 0, -32, Math.floor(particle.life / 3), 32, 32);
+                graphics.pop();
+            }
             for (const dino of players) {
                 if (dino.y > 120) {
                     continue;
