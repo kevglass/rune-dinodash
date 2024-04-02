@@ -144,6 +144,27 @@ Rune.initLogic({
     return state;
   },
   updatesPerSecond: 30,
+  events: {
+    playerJoined: (playerId, context) => {
+      if (0 == context.game.gameStart && playerId) {
+        const state = context.game;
+        state.players[playerId] = {
+          id: playerId,
+          x: 0,
+          y: 0,
+          vx: 0,
+          vy: 0,
+          sprite: (state.nextSprite++) % 4,
+          dead: false,
+          lastBounce: 0,
+          ready: false
+        }
+      }
+    },
+    playerLeft: (playerId, context) => {
+      delete context.game.players[playerId];
+    }
+  },
   update: (context) => {
     context.game.events = [];
     context.game.restart = false;
@@ -190,23 +211,23 @@ Rune.initLogic({
       }
 
       if (!p.dead) {
-        const xp = (Math.floor(p.x / 32));
+        const xp = (Math.floor((p.x - 16) / 32));
         // on the ground over a gap - fall off screen
-        if ((context.game.items[xp] === Item.GAP || context.game.items[xp + 1] === Item.GAP) && (p.y === 0)) {
+        if ((context.game.items[xp] === Item.GAP) && (p.y === 0)) {
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
-          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED});
-        } else if ((context.game.items[xp] === Item.GAP2 || context.game.items[xp + 1] === Item.GAP2 || context.game.items[xp + 2] === Item.GAP2) && (p.y === 0)) {
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED });
+        } else if ((context.game.items[xp] === Item.GAP2 || context.game.items[xp + 1] === Item.GAP2) && (p.y === 0)) {
           p.vx = 0;
           p.vy = 1;
           p.dead = true;
-          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED});
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.DIED });
         } else if (context.game.items[xp] === Item.FLYING && p.y < -10) {
           p.vx = -20;
           p.vy = -10;
           p.x -= p.vx;
-          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.HIT});
+          context.game.events.push({ xp, item: context.game.items[xp], playerId: p.id, type: GameEventType.HIT });
           delete context.game.items[xp];
           p.lastBounce = Rune.gameTime();
         } else if (context.game.items[xp] !== Item.GAP && context.game.items[xp] !== Item.GAP2 && context.game.items[xp] !== Item.FLYING && context.game.items[xp] && p.y > -8) {
@@ -239,7 +260,7 @@ Rune.initLogic({
       const player = context.game.players[context.playerId];
       if (player && !player.dead) {
         if (player.y == 0 && player.vy === 0) {
-          player.vy = -10;
+          player.vy = -13;
         }
       }
     },

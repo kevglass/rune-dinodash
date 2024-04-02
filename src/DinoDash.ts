@@ -72,6 +72,7 @@ export class DinoDash implements graphics.Game {
     particles: Particle[] = [];
     updateCount = 0;
     lastParticle = 0;
+    watching = 0;
 
     constructor() {
         // we're going to use the WebGL renderer with 5 pixels of texture padding
@@ -103,7 +104,7 @@ export class DinoDash implements graphics.Game {
         this.bigFont = graphics.generateFont(35, "white");
 
         this.dust = graphics.loadTileSet(ASSETS["dust.png"], 16, 16),
-        this.flying = [];
+            this.flying = [];
         for (let i = 1; i < 5; i++) {
             this.flying.push(graphics.loadImage(ASSETS["flying/" + i + ".png"]))
         }
@@ -136,7 +137,14 @@ export class DinoDash implements graphics.Game {
 
     mouseDown(x: number, y: number): void {
         if (this.spectator) {
-            alert("Spectator");
+
+            const buttonScale = graphics.width() / 18;
+            x -= 10;
+            x /= buttonScale * 4.5;
+            x = Math.floor(x);
+            if (x >= 0 && x < 4) {
+                this.watching = x;
+            }
             return;
         }
         if (this.waitingForReady) {
@@ -229,7 +237,7 @@ export class DinoDash implements graphics.Game {
             particle.life++;
             if (particle.life > 15) {
                 this.particles.splice(this.particles.indexOf(particle), 1);
-            } 
+            }
         }
 
         this.game = update.game;
@@ -254,11 +262,11 @@ export class DinoDash implements graphics.Game {
             this.waitingForReady = false;
             sound.playSound(this.sfxStart);
         }
-        if (update.yourPlayerId) {
+        if (update.yourPlayerId && update.game.players[update.yourPlayerId]) {
             this.player = update.game.players[update.yourPlayerId];
             this.spectator = false;
         } else {
-            this.player = Object.values(update.game.players)[0];
+            this.player = Object.values(update.game.players)[this.watching];
             this.spectator = true;
         }
 
@@ -453,25 +461,36 @@ export class DinoDash implements graphics.Game {
         }
         graphics.pop();
 
-        const buttonScale = graphics.width() / 14;
+        if (!this.spectator) {
+            const buttonScale = graphics.width() / 14;
 
-        const leftArrow = this.leftFoot ? this.arrowOn : this.arrowOff;
-        const rightArrow = this.leftFoot ? this.arrowOff : this.arrowOn;
+            const leftArrow = this.leftFoot ? this.arrowOn : this.arrowOff;
+            const rightArrow = this.leftFoot ? this.arrowOff : this.arrowOn;
 
-        graphics.drawImage(leftArrow, 8 + (buttonScale * 1.5) - (leftArrow.width / 2),
-            graphics.height() - (buttonScale * 5) - leftArrow.height);
-        graphics.ninePatch(this.button, 8, graphics.height() - (buttonScale * 5), buttonScale * 3, buttonScale * 3, "#8ba9d4");
-        graphics.drawImage(this.foot, 8 + (buttonScale * 0.25), graphics.height() - (buttonScale * 4.75), buttonScale * 2.5, buttonScale * 2.5);
+            graphics.drawImage(leftArrow, 8 + (buttonScale * 1.5) - (leftArrow.width / 2),
+                graphics.height() - (buttonScale * 5) - leftArrow.height);
+            graphics.ninePatch(this.button, 8, graphics.height() - (buttonScale * 5), buttonScale * 3, buttonScale * 3, "#8ba9d4");
+            graphics.drawImage(this.foot, 8 + (buttonScale * 0.25), graphics.height() - (buttonScale * 4.75), buttonScale * 2.5, buttonScale * 2.5);
 
-        graphics.drawImage(rightArrow, graphics.width() - 8 - (buttonScale * 3) + (buttonScale * 1.5) - (rightArrow.width / 2),
-            graphics.height() - (buttonScale * 5) - rightArrow.height);
-        graphics.ninePatch(this.button, graphics.width() - 8 - (buttonScale * 3), graphics.height() - (buttonScale * 5), buttonScale * 3, buttonScale * 3, "#8ba9d4");
-        graphics.drawImage(this.foot, graphics.width() - 8 - (buttonScale * 3) + (buttonScale * 0.25), graphics.height() - (buttonScale * 4.75), buttonScale * 2.5, buttonScale * 2.5);
+            graphics.drawImage(rightArrow, graphics.width() - 8 - (buttonScale * 3) + (buttonScale * 1.5) - (rightArrow.width / 2),
+                graphics.height() - (buttonScale * 5) - rightArrow.height);
+            graphics.ninePatch(this.button, graphics.width() - 8 - (buttonScale * 3), graphics.height() - (buttonScale * 5), buttonScale * 3, buttonScale * 3, "#8ba9d4");
+            graphics.drawImage(this.foot, graphics.width() - 8 - (buttonScale * 3) + (buttonScale * 0.25), graphics.height() - (buttonScale * 4.75), buttonScale * 2.5, buttonScale * 2.5);
 
-        graphics.ninePatch(this.button, (buttonScale * 4), graphics.height() - (buttonScale * 4), graphics.width() - (buttonScale * 8), buttonScale * 2, "#a6cc34");
-        graphics.drawImage(this.jump, Math.floor(graphics.width() / 2) - (buttonScale * 0.75), graphics.height() - (buttonScale * 3.75), buttonScale * 1.5, buttonScale * 1.5);
+            graphics.ninePatch(this.button, (buttonScale * 4), graphics.height() - (buttonScale * 4), graphics.width() - (buttonScale * 8), buttonScale * 2, "#a6cc34");
+            graphics.drawImage(this.jump, Math.floor(graphics.width() / 2) - (buttonScale * 0.75), graphics.height() - (buttonScale * 3.75), buttonScale * 1.5, buttonScale * 1.5);
+        } else {
+            let index = 0;
+            const buttonScale = graphics.width() / 18;
+            for (const player of Object.values(this.game.players)) {
+                graphics.ninePatch(this.button, 10 + (index * buttonScale * 4.5), graphics.height() - (buttonScale * 4.5), buttonScale * 4, buttonScale * 4, this.watching == index ?  "#a6cc34" : "#8ba9d4");
+                const playerSprite = this.players[player.sprite];
+                const anim = playerSprite.idle;
+                graphics.drawTile(playerSprite.idle, (index * buttonScale * 4.5) + (buttonScale * 2) - 22, graphics.height() - (buttonScale * 1) - (anim.tileHeight * 2), 0, anim.tileWidth * 2, anim.tileHeight * 2);
+                index++;
+            }
 
-
+        }
         if (!this.game.gameOver) {
             graphics.fillRect(0, 0, graphics.width(), 28, "rgba(0,0,0,0.5)");
             const width = Math.floor(graphics.width() / 4);
@@ -495,7 +514,7 @@ export class DinoDash implements graphics.Game {
             graphics.drawText(graphics.width() - graphics.textWidth(timeStr, this.font) - 9, 20, timeStr, this.font, "white");
         }
 
-        if (this.waitingForReady) {
+        if (this.waitingForReady && !this.spectator) {
             graphics.fillRect(0, 0, graphics.width(), graphics.height(), "rgba(0,0,0,0.25)");
             graphics.drawImage(this.logo, Math.floor((graphics.width() - this.logo.width) / 2), 50);
 
@@ -548,7 +567,10 @@ export class DinoDash implements graphics.Game {
             const players = Object.values(this.game.players);
             const winner = players.reduce((a, b) => a.x > b.x ? a : b);
             graphics.fillRect(0, 55, graphics.width(), 25, "rgba(0,0,0,0.5)");
-            graphics.drawText(58, 73, Rune.getPlayerInfo(winner.id).displayName, this.font);
+            const winnerInfo = Rune.getPlayerInfo(winner.id);
+            if (winnerInfo) {
+                graphics.drawText(58, 73, winnerInfo.displayName, this.font);
+            }
             const distance = Math.floor((winner.x - 60) / 50) + "m";
             graphics.drawText(graphics.width() - 10 - graphics.textWidth(distance, this.font), 75, distance, this.font);
             const playerSprite = this.players[winner.sprite];
@@ -563,7 +585,10 @@ export class DinoDash implements graphics.Game {
                 }
 
                 graphics.fillRect(0, 55, graphics.width(), 25, "rgba(0,0,0,0.5)");
-                graphics.drawText(58, 73, Rune.getPlayerInfo(player.id).displayName, this.font);
+                const playerInfo = Rune.getPlayerInfo(player.id);
+                if (playerInfo) {
+                    graphics.drawText(58, 73, Rune.getPlayerInfo(player.id).displayName, this.font);
+                }
                 const distance = Math.floor((player.x - 60) / 50) + "m";
                 graphics.drawText(graphics.width() - 10 - graphics.textWidth(distance, this.font), 75, distance, this.font);
                 const playerSprite = this.players[player.sprite];
