@@ -73,7 +73,8 @@ export class DinoDash implements graphics.Game {
     updateCount = 0;
     lastParticle = 0;
     watching = 0;
-
+    restarted = false;
+    
     constructor() {
         // we're going to use the WebGL renderer with 5 pixels of texture padding
         // to prevent artifacts 
@@ -251,11 +252,17 @@ export class DinoDash implements graphics.Game {
                 sound.playSound(this.sfxEnd, 0.5);
             }
         }
-        if (this.game.restart) {
-            this.waitingForReady = true;
-            this.speed = 0;
-            this.gameOver = false;
-            sound.playSound(this.sfxStartup);
+        if (Rune.gameTime() < 1000) {
+            if (!this.restarted) {
+                this.waitingForReady = true;
+                this.speed = 0;
+                this.gameOver = false;
+                sound.playSound(this.sfxStartup);
+
+                this.restarted = true;
+            }
+        } else {
+            this.restarted = false;
         }
 
         if (this.game.gameStart !== 0 && this.waitingForReady) {

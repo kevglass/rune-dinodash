@@ -45,7 +45,6 @@ export interface GameState {
   gameOver: boolean;
   gameOverReason: string;
   reportWinnerAt: number;
-  restart: boolean;
 }
 
 function getRandomItem(): Item {
@@ -115,7 +114,6 @@ Rune.initLogic({
       gameOver: false,
       gameOverReason: "",
       reportWinnerAt: 0,
-      restart: true
     };
 
     let x = 20;
@@ -167,7 +165,6 @@ Rune.initLogic({
   },
   update: (context) => {
     context.game.events = [];
-    context.game.restart = false;
 
     if (!Object.values(context.game.players).every(p => p.ready)) {
       context.game.endGame = Rune.gameTime() + (1 * 60000);
