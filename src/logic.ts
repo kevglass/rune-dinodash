@@ -1,4 +1,4 @@
-import type { OnChangeAction, OnChangeEvent, PlayerId, Players, RuneClient } from "rune-games-sdk/multiplayer"
+import type { PlayerId, Players, RuneClient } from "rune-games-sdk/multiplayer"
 
 export const SLOW_DOWN = 0.995;
 
@@ -64,24 +64,11 @@ function getRandomItem(): Item {
   }
 }
 
-type GameActions = {
+export type GameActions = {
   speed: (params: { speed: number }) => void,
   jump: () => void;
   ready: () => void;
 }
-
-// Quick type so I can pass the complex object that is the 
-// Rune onChange blob around without ugliness. 
-export type GameUpdate = {
-  game: GameState;
-  action?: OnChangeAction<GameActions>;
-  event?: OnChangeEvent;
-  yourPlayerId: PlayerId | undefined;
-  players: Players;
-  rollbacks: OnChangeAction<GameActions>[];
-  previousGame: GameState;
-  futureGame?: GameState;
-};
 
 declare global {
   const Rune: RuneClient<GameState, GameActions>
@@ -141,6 +128,7 @@ Rune.initLogic({
 
     return state;
   },
+  landscape: true,
   updatesPerSecond: 30,
   events: {
     playerJoined: (playerId, context) => {

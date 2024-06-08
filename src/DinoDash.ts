@@ -1,6 +1,7 @@
 import { graphics, sound } from "toglib";
 import { ASSETS } from "./lib/assets";
-import { GameEventType, GameState, GameUpdate, Item, Player, SLOW_DOWN } from "./logic";
+import { GameActions, GameEventType, GameState, Item, Player, SLOW_DOWN } from "./logic";
+import { OnChange, OnChangeParams } from "rune-games-sdk";
 
 export interface PlayerSprite {
     run: graphics.TileSet;
@@ -139,7 +140,7 @@ export class DinoDash implements graphics.Game {
     mouseDown(x: number, y: number): void {
         if (this.spectator) {
 
-            const buttonScale = graphics.width() / 18;
+            const buttonScale = graphics.height() / 18;
             x -= 10;
             x /= buttonScale * 4.5;
             x = Math.floor(x);
@@ -229,7 +230,7 @@ export class DinoDash implements graphics.Game {
         return !!this.game && this.game.gameStart > Rune.gameTime();
     }
 
-    gameUpdate(update: GameUpdate): void {
+    gameUpdate(update:  OnChangeParams<GameState, GameActions>): void {
         if (update.event?.name !== "update") {
             return;
         }
@@ -469,11 +470,13 @@ export class DinoDash implements graphics.Game {
         graphics.pop();
 
         if (!this.spectator) {
-            const buttonScale = graphics.width() / 14;
+            const buttonScale = graphics.height() / 14;
 
             const leftArrow = this.leftFoot ? this.arrowOn : this.arrowOff;
             const rightArrow = this.leftFoot ? this.arrowOff : this.arrowOn;
 
+            graphics.push();
+            graphics.translate(0, buttonScale);
             graphics.drawImage(leftArrow, 8 + (buttonScale * 1.5) - (leftArrow.width / 2),
                 graphics.height() - (buttonScale * 5) - leftArrow.height);
             graphics.ninePatch(this.button, 8, graphics.height() - (buttonScale * 5), buttonScale * 3, buttonScale * 3, "#8ba9d4");
@@ -486,9 +489,10 @@ export class DinoDash implements graphics.Game {
 
             graphics.ninePatch(this.button, (buttonScale * 4), graphics.height() - (buttonScale * 4), graphics.width() - (buttonScale * 8), buttonScale * 2, "#a6cc34");
             graphics.drawImage(this.jump, Math.floor(graphics.width() / 2) - (buttonScale * 0.75), graphics.height() - (buttonScale * 3.75), buttonScale * 1.5, buttonScale * 1.5);
+            graphics.pop();
         } else {
             let index = 0;
-            const buttonScale = graphics.width() / 18;
+            const buttonScale = graphics.height() / 18;
             for (const player of Object.values(this.game.players)) {
                 graphics.ninePatch(this.button, 10 + (index * buttonScale * 4.5), graphics.height() - (buttonScale * 4.5), buttonScale * 4, buttonScale * 4, this.watching == index ?  "#a6cc34" : "#8ba9d4");
                 const playerSprite = this.players[player.sprite];
