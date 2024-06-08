@@ -77,7 +77,7 @@ export class DinoDash implements graphics.Game {
     restarted = false;
     
     constructor() {
-        // we're going to use the WebGL renderer with 5 pixels of texture padding
+        // we're going to use the WeL renderer with 5 pixels of texture padding
         // to prevent artifacts 
         graphics.init(graphics.RendererType.WEBGL, true, undefined, 5);
 
@@ -362,15 +362,15 @@ export class DinoDash implements graphics.Game {
         graphics.fillRect(0, 0, graphics.width(), graphics.height(), "rgb(201,236,255)");
 
         const y = Math.floor((graphics.height() / 1.8));
-        const bgWidth = Math.floor(graphics.width() * 1.5);
+        const bgWidth = Math.floor(graphics.width() * 0.5);
         for (let i = 0; i < this.layers.length; i++) {
             graphics.push();
             graphics.translate((-(this.player.x * (0.25 * i)) % bgWidth), 0);
-            for (let n = 0; n < 2; n++) {
-                graphics.translate((n * bgWidth), 0);
+            for (let n = 0; n < 3; n++) {
                 const layer = this.layers[i];
-                const layerHeight = Math.floor((bgWidth / layer.width) * layer.height);
+                const layerHeight = Math.floor((bgWidth / layer.width) * layer.height)
                 graphics.drawImage(layer, 0, y - layerHeight, bgWidth, layerHeight);
+                graphics.translate(bgWidth, 0);
             }
             graphics.pop();
         }
