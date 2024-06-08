@@ -1,7 +1,7 @@
 import { graphics, sound } from "toglib";
 import { ASSETS } from "./lib/assets";
 import { GameActions, GameEventType, GameState, Item, Player, SLOW_DOWN } from "./logic";
-import { OnChange, OnChangeParams } from "rune-games-sdk";
+import { OnChangeParams } from "rune-games-sdk";
 
 export interface PlayerSprite {
     run: graphics.TileSet;

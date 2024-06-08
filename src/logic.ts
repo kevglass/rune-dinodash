@@ -1,4 +1,4 @@
-import type { PlayerId, Players, RuneClient } from "rune-games-sdk/multiplayer"
+import type { PlayerId, RuneClient } from "rune-games-sdk/multiplayer"
 
 export const SLOW_DOWN = 0.995;
 
