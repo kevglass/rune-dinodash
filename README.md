@@ -1,12 +1,12 @@
 # Dino Dash
 
-Another simple game to try out https://rune.ai - bit of a hackup with limited time on the code but the game is quite fun.
+Another simple game to try out https://dusk.gg - bit of a hackup with limited time on the code but the game is quite fun.
 
 _All game assets are licensed for use in these projects. They remain copyright of their authors._
 
-_You can find the rest of my rune games here https://github.com/kevglass/rune-games_
+_You can find the rest of my dusk games here https://github.com/kevglass/dusk-games_
 
-![preview](https://github.com/kevglass/rune-dinodash/assets/3787210/38a82c94-2ec5-498f-9bf8-3f2fcb1c6d71)
+![preview](https://github.com/kevglass/dusk-dinodash/assets/3787210/38a82c94-2ec5-498f-9bf8-3f2fcb1c6d71)
 
 # How to Play
 
